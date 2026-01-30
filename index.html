@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="it">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -15,28 +15,18 @@
 </head>
 <body>
   <div class="box">
-    <select id="langPick" aria-label="Lingua">
-      <option value="auto">Lingua automatica (dal dispositivo)</option>
-      <option value="ar">Arabo standard</option>
-      <option value="bn">Bengalese</option>
-      <option value="zh">Cinese</option>
-      <option value="de">Tedesco</option>
-      <option value="en">Inglese</option>
-      <option value="es">Spagnolo</option>
-      <option value="fr">Francese</option>
-      <option value="hi">Hindi</option>
-      <option value="it">Italiano</option>
-      <option value="pt">Portoghese</option>
-      <option value="ru">Russo</option>
-    </select>
+    <select id="langPick" aria-label="Language"></select>
 
-    <button id="playBtn" type="button">Tocca per ascoltare</button>
+    <button id="playBtn" type="button"></button>
     <div class="note" id="note"></div>
 
     <audio id="player" controls preload="auto"></audio>
   </div>
 
 <script>
+  const FALLBACK_LANG = "en";
+
+  // lingua → file
   const tracks = {
     ar: "Croce01_ARA.mp3",
     bn: "Croce01_BEN.mp3",
@@ -51,21 +41,90 @@
     ru: "Croce01_RUS.mp3"
   };
 
-  const labels = {
-    ar: "Arabo standard",
-    bn: "Bengalese",
-    zh: "Cinese",
-    de: "Tedesco",
-    en: "Inglese",
-    es: "Spagnolo",
-    fr: "Francese",
-    hi: "Hindi",
+  // nomi lingua (in lingua propria)
+  const langNameNative = {
+    ar: "العربية الفصحى",
+    bn: "বাংলা",
+    zh: "中文",
+    de: "Deutsch",
+    en: "English",
+    es: "Español",
+    fr: "Français",
+    hi: "हिन्दी",
     it: "Italiano",
-    pt: "Portoghese",
-    ru: "Russo"
+    pt: "Português",
+    ru: "Русский"
   };
 
-  const FALLBACK_LANG = "en"; // <- qui: se la lingua del device non è prevista, usa inglese
+  // testi UI per lingua (se manca, ripiega su EN)
+  const ui = {
+    en: {
+      auto: "Automatic language (from device)",
+      btn: "Tap to listen",
+      selected: (name, code) => `Selected language: ${name} (${code}).`,
+      hint: "If it doesn't start, tap once."
+    },
+    it: {
+      auto: "Lingua automatica (dal dispositivo)",
+      btn: "Tocca per ascoltare",
+      selected: (name, code) => `Lingua selezionata: ${name} (${code}).`,
+      hint: "Se non parte, tocca una volta."
+    },
+    es: {
+      auto: "Idioma automático (del dispositivo)",
+      btn: "Toca para escuchar",
+      selected: (name, code) => `Idioma seleccionado: ${name} (${code}).`,
+      hint: "Si no empieza, toca una vez."
+    },
+    fr: {
+      auto: "Langue automatique (de l’appareil)",
+      btn: "Touchez pour écouter",
+      selected: (name, code) => `Langue sélectionnée : ${name} (${code}).`,
+      hint: "Si ça ne démarre pas, touchez une fois."
+    },
+    de: {
+      auto: "Automatische Sprache (vom Gerät)",
+      btn: "Tippen zum Anhören",
+      selected: (name, code) => `Ausgewählte Sprache: ${name} (${code}).`,
+      hint: "Wenn es nicht startet, einmal tippen."
+    },
+    pt: {
+      auto: "Idioma automático (do dispositivo)",
+      btn: "Toque para ouvir",
+      selected: (name, code) => `Idioma selecionado: ${name} (${code}).`,
+      hint: "Se não iniciar, toque uma vez."
+    },
+    ru: {
+      auto: "Язык автоматически (с устройства)",
+      btn: "Нажмите, чтобы слушать",
+      selected: (name, code) => `Выбранный язык: ${name} (${code}).`,
+      hint: "Если не началось, нажмите один раз."
+    },
+    zh: {
+      auto: "自动语言（来自设备）",
+      btn: "点按播放",
+      selected: (name, code) => `已选择语言：${name}（${code}）。`,
+      hint: "如果没有开始，请点按一次。"
+    },
+    ar: {
+      auto: "اللغة تلقائيًا (من الجهاز)",
+      btn: "اضغط للاستماع",
+      selected: (name, code) => `اللغة المختارة: ${name} (${code}).`,
+      hint: "إذا لم يبدأ، اضغط مرة واحدة."
+    },
+    bn: {
+      auto: "স্বয়ংক্রিয় ভাষা (ডিভাইস থেকে)",
+      btn: "শুনতে ট্যাপ করুন",
+      selected: (name, code) => `নির্বাচিত ভাষা: ${name} (${code}).`,
+      hint: "শুরু না হলে একবার ট্যাপ করুন।"
+    },
+    hi: {
+      auto: "स्वचालित भाषा (डिवाइस से)",
+      btn: "सुनने के लिए टैप करें",
+      selected: (name, code) => `चयनित भाषा: ${name} (${code}).`,
+      hint: "यदि शुरू न हो, एक बार टैप करें।"
+    }
+  };
 
   const player   = document.getElementById("player");
   const playBtn  = document.getElementById("playBtn");
@@ -73,6 +132,7 @@
   const langPick = document.getElementById("langPick");
 
   function normalizeLang(tag){
+    // es: "pt-BR" -> "pt", "zh-Hant-TW" -> "zh"
     return String(tag || "").toLowerCase().split("-")[0];
   }
 
@@ -88,18 +148,60 @@
     return FALLBACK_LANG;
   }
 
-  function setTrack(lang){
-    let chosen = (lang === "auto") ? pickAutoLang() : lang;
-    if (!tracks[chosen]) chosen = FALLBACK_LANG;
+  function resolveLang(requested){
+    if (requested === "auto") return pickAutoLang();
+    return tracks[requested] ? requested : FALLBACK_LANG;
+  }
+
+  function t(lang){
+    return ui[lang] || ui[FALLBACK_LANG];
+  }
+
+  function setDirectionAndLangTag(lang){
+    document.documentElement.lang = lang;
+    document.documentElement.dir = (lang === "ar") ? "rtl" : "ltr";
+  }
+
+  function buildSelect(uiLang){
+    const currentValue = langPick.value || "auto";
+    langPick.innerHTML = "";
+
+    const optAuto = document.createElement("option");
+    optAuto.value = "auto";
+    optAuto.textContent = t(uiLang).auto;
+    langPick.appendChild(optAuto);
+
+    // Opzioni: nomi in lingua propria (non serve tradurli)
+    const order = ["ar","bn","zh","de","en","es","fr","hi","it","pt","ru"];
+    for (const code of order) {
+      const opt = document.createElement("option");
+      opt.value = code;
+      opt.textContent = langNameNative[code] || code;
+      langPick.appendChild(opt);
+    }
+
+    // Ripristina selezione utente
+    langPick.value = currentValue;
+  }
+
+  function apply(requested){
+    const chosen = resolveLang(requested);
+    const uiLang = chosen; // testi UI nella lingua scelta
+
+    setDirectionAndLangTag(uiLang);
+    buildSelect(uiLang);
+
+    playBtn.textContent = t(uiLang).btn;
 
     const file = tracks[chosen];
     const wasPlaying = !player.paused && !player.ended;
 
     player.src = file;
-    note.textContent =
-      "Lingua selezionata: " + (labels[chosen] || "Inglese") +
-      " (" + chosen.toUpperCase() + ").";
 
+    const name = langNameNative[chosen] || langNameNative[FALLBACK_LANG];
+    note.textContent = `${t(uiLang).selected(name, chosen.toUpperCase())} ${t(uiLang).hint}`;
+
+    // Se l’utente stava già ascoltando e cambia lingua, riparti (se possibile)
     if (wasPlaying) player.play().catch(()=>{});
   }
 
@@ -108,16 +210,20 @@
     catch(e){ /* autoplay bloccato: normale */ }
   }
 
-  setTrack("auto");
+  // Init
+  apply("auto");
   window.addEventListener("load", tryPlay);
 
+  // Cambio manuale lingua
   langPick.addEventListener("change", () => {
-    setTrack(langPick.value);
+    apply(langPick.value);
     tryPlay();
   });
 
+  // Avvio “affidabile” con gesto
   playBtn.addEventListener("click", tryPlay);
 
+  // Fallback: primo tap ovunque sulla pagina
   let first = true;
   document.addEventListener("pointerdown", () => {
     if (!first) return;
