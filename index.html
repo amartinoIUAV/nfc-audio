@@ -5,41 +5,125 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Audio</title>
   <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;min-height:100vh;display:grid;place-items:center;background:#fff}
-    .box{max-width:560px;width:92%;border:1px solid #ddd;border-radius:16px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.08);text-align:center}
-    .big{font-size:20px;font-weight:700;padding:16px 18px;border-radius:14px;border:1px solid #111;background:#111;color:#fff;width:100%;cursor:pointer}
-    .note{margin-top:10px;color:#444;font-size:14px}
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;min-height:100vh;display:grid;place-items:center;padding:24px}
+    .box{max-width:560px;width:100%;border:1px solid #ddd;border-radius:16px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.08)}
+    select,button{width:100%;padding:14px 16px;border-radius:14px;border:1px solid #111;font-weight:700}
+    button{background:#111;color:#fff;cursor:pointer;margin-top:10px}
+    .note{margin-top:10px;color:#444;font-size:14px;line-height:1.35}
     audio{width:100%;margin-top:14px}
   </style>
 </head>
 <body>
   <div class="box">
-    <button id="btn" class="big" type="button">Tocca per ascoltare</button>
-    <div class="note" id="note">Se non parte subito, tocca ancora una volta. Su Android è normale.</div>
-    <audio id="a" controls preload="auto">
-      <source src="Croce01_ITA.mp3" type="audio/mpeg">
-    </audio>
+    <select id="langPick" aria-label="Lingua">
+      <option value="auto">Lingua automatica (dal dispositivo)</option>
+      <option value="ar">Arabo standard</option>
+      <option value="bn">Bengalese</option>
+      <option value="zh">Cinese</option>
+      <option value="de">Tedesco</option>
+      <option value="en">Inglese</option>
+      <option value="es">Spagnolo</option>
+      <option value="fr">Francese</option>
+      <option value="hi">Hindi</option>
+      <option value="it">Italiano</option>
+      <option value="pt">Portoghese</option>
+      <option value="ru">Russo</option>
+    </select>
+
+    <button id="playBtn" type="button">Tocca per ascoltare</button>
+    <div class="note" id="note"></div>
+
+    <audio id="player" controls preload="auto"></audio>
   </div>
 
 <script>
-  const a = document.getElementById('a');
-  const btn = document.getElementById('btn');
+  const tracks = {
+    ar: "Croce01_ARA.mp3",
+    bn: "Croce01_BEN.mp3",
+    zh: "Croce01_CIN.mp3",
+    de: "Croce01_DEU.mp3",
+    en: "Croce01_ENG.mp3",
+    es: "Croce01_ESP.mp3",
+    fr: "Croce01_FRA.mp3",
+    hi: "Croce01_HIN.mp3",
+    it: "Croce01_ITA.mp3",
+    pt: "Croce01_POR.mp3",
+    ru: "Croce01_RUS.mp3"
+  };
 
-  async function start(){
-    try { await a.play(); }
-    catch(e){ /* bloccato: serve gesto */ }
+  const labels = {
+    ar: "Arabo standard",
+    bn: "Bengalese",
+    zh: "Cinese",
+    de: "Tedesco",
+    en: "Inglese",
+    es: "Spagnolo",
+    fr: "Francese",
+    hi: "Hindi",
+    it: "Italiano",
+    pt: "Portoghese",
+    ru: "Russo"
+  };
+
+  const FALLBACK_LANG = "en"; // <- qui: se la lingua del device non è prevista, usa inglese
+
+  const player   = document.getElementById("player");
+  const playBtn  = document.getElementById("playBtn");
+  const note     = document.getElementById("note");
+  const langPick = document.getElementById("langPick");
+
+  function normalizeLang(tag){
+    return String(tag || "").toLowerCase().split("-")[0];
   }
 
-  window.addEventListener('load', start);
+  function pickAutoLang(){
+    const langs = (navigator.languages && navigator.languages.length)
+      ? navigator.languages
+      : [navigator.language || ""];
 
-  btn.addEventListener('click', start);
+    for (const tag of langs) {
+      const base = normalizeLang(tag);
+      if (tracks[base]) return base;
+    }
+    return FALLBACK_LANG;
+  }
+
+  function setTrack(lang){
+    let chosen = (lang === "auto") ? pickAutoLang() : lang;
+    if (!tracks[chosen]) chosen = FALLBACK_LANG;
+
+    const file = tracks[chosen];
+    const wasPlaying = !player.paused && !player.ended;
+
+    player.src = file;
+    note.textContent =
+      "Lingua selezionata: " + (labels[chosen] || "Inglese") +
+      " (" + chosen.toUpperCase() + ").";
+
+    if (wasPlaying) player.play().catch(()=>{});
+  }
+
+  async function tryPlay(){
+    try { await player.play(); }
+    catch(e){ /* autoplay bloccato: normale */ }
+  }
+
+  setTrack("auto");
+  window.addEventListener("load", tryPlay);
+
+  langPick.addEventListener("change", () => {
+    setTrack(langPick.value);
+    tryPlay();
+  });
+
+  playBtn.addEventListener("click", tryPlay);
 
   let first = true;
-  document.addEventListener('pointerdown', () => {
-    if(!first) return;
+  document.addEventListener("pointerdown", () => {
+    if (!first) return;
     first = false;
-    start();
-  }, {passive:true});
+    tryPlay();
+  }, { passive: true });
 </script>
 </body>
 </html>
